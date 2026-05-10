@@ -1,0 +1,152 @@
+#!/usr/bin/env bash
+# scortaix — Scortex worktree CLI
+#
+# Usage:
+#   scortaix tree      <project> <branch>   Create or jump to a worktree
+#   scortaix clean     <project> <branch>   Remove a worktree and its containers
+#   scortaix uninstall                      Remove the binary and shell wrappers
+#
+# Projects: sensei (alias: scortex) | quality-center (alias: qc)
+
+set -euo pipefail
+
+SCORTAIX_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCORTAIX_CONFIG="${XDG_CONFIG_HOME:-$HOME/.config}/scortaix/config"
+if [[ "${1:-}" != "uninstall" ]]; then
+    [[ -f "$SCORTAIX_CONFIG" ]] && source "$SCORTAIX_CONFIG" \
+        || { echo "scortaix is not configured. Run install.sh first." >&2; exit 1; }
+    export SCORTAIX_PROJECTS_DIR
+fi
+
+# ── Formatting ─────────────────────────────────────────────────────────────────
+BOLD='\033[1m'
+ERROR='\033[0;31m'
+SUCCESS='\033[0;32m'
+WARN='\033[1;33m'
+PRIMARY='\033[0;34m'
+NC='\033[0m'
+
+step()    { echo -e "${PRIMARY}→${NC} $*" >&2; }
+success() { echo -e "${SUCCESS}✓${NC} $*" >&2; }
+warn()    { echo -e "${WARN}!${NC} $*" >&2; }
+error()   { echo -e "${ERROR}✗${NC} $*" >&2; exit 1; }
+export -f step success warn error
+export WARN NC SUCCESS PRIMARY ERROR
+
+# ── Project resolution ─────────────────────────────────────────────────────────
+resolve_project() {
+    case "${1:-}" in
+        (sensei|scortex)         echo "sensei" ;;
+        (quality-center|qc)      echo "quality-center" ;;
+        (*) error "Unknown project '${1:-}'. Use: sensei (or scortex) | quality-center (or qc)" ;;
+    esac
+}
+
+# ── Uninstall ──────────────────────────────────────────────────────────────────
+uninstall() {
+    local binary="$HOME/.local/bin/scortaix"
+    local fish_wrapper="$HOME/.config/fish/functions/scortaix.fish"
+    local zshrc="$HOME/.zshrc"
+    local config="${XDG_CONFIG_HOME:-$HOME/.config}/scortaix/config"
+    local found=0
+
+    echo -e "${WARN}This will remove:${NC}"
+
+    [[ -f "$binary" ]]       && { echo "  • Binary: $binary";               found=1; }
+    [[ -f "$fish_wrapper" ]] && { echo "  • Fish wrapper: $fish_wrapper";   found=1; }
+    grep -q "# scortaix shell wrapper" "$zshrc" 2>/dev/null \
+                             && { echo "  • Zsh wrapper block in $zshrc";   found=1; }
+    [[ -f "$config" ]]       && { echo "  • Config: $config";               found=1; }
+
+    if [[ "$found" -eq 0 ]]; then
+        echo "  Nothing to remove — scortaix does not appear to be installed."
+        exit 0
+    fi
+
+    echo ""
+    read -r -p "Confirm? [y/N] " confirm
+    [[ "$confirm" =~ ^[Yy]$ ]] || { echo "Aborted."; exit 0; }
+    echo ""
+
+    if [[ -f "$fish_wrapper" ]]; then
+        rm "$fish_wrapper"
+        success "Removed fish wrapper"
+    fi
+
+    if grep -q "# scortaix shell wrapper" "$zshrc" 2>/dev/null; then
+        sed '/^# scortaix shell wrapper/,/^}$/d' "$zshrc" > /tmp/scortaix_zshrc_clean \
+            && mv /tmp/scortaix_zshrc_clean "$zshrc"
+        success "Removed zsh wrapper from $zshrc"
+    fi
+
+    if [[ -f "$config" ]]; then
+        rm "$config"
+        rmdir "$(dirname "$config")" 2>/dev/null || true
+        success "Removed config"
+    fi
+
+    # Remove binary last — the running script still works until this process exits
+    if [[ -f "$binary" ]]; then
+        rm "$binary"
+        success "Removed binary"
+    fi
+
+    echo ""
+    success "Uninstalled."
+}
+
+# ── Usage ──────────────────────────────────────────────────────────────────────
+usage() {
+    echo -e "${BOLD}scortaix${NC} — Scortex worktree CLI"
+    echo ""
+    echo -e "${BOLD}Usage:${NC}"
+    echo "  scortaix tree      <project> <branch>   Create or jump to a worktree"
+    echo "  scortaix clean     <project> <branch>   Remove a worktree and its containers"
+    echo "  scortaix uninstall                      Remove the binary and shell wrappers"
+    echo ""
+    echo -e "${BOLD}Projects:${NC}"
+    echo "  sensei         (alias: scortex)"
+    echo "  quality-center (alias: qc)"
+    echo ""
+    echo -e "${BOLD}Examples:${NC}"
+    echo "  scortaix tree sensei my-feature"
+    echo "  scortaix tree qc fix/login-bug"
+    echo "  scortaix clean sensei my-feature"
+}
+
+# ── Main ───────────────────────────────────────────────────────────────────────
+CMD="${1:-}"
+[[ -z "$CMD" ]] && { usage; exit 0; }
+
+case "$CMD" in
+    (tree|clean)
+        PROJECT=$(resolve_project "${2:-}")
+        BRANCH="${3:-}"
+        [[ -z "$BRANCH" ]] && error "Branch name required. Usage: scortaix $CMD <project> <branch>"
+
+        # shellcheck source=lib/worktree.sh
+        source "$SCORTAIX_SOURCE_DIR/lib/worktree.sh"
+
+        case "$PROJECT" in
+            (sensei)
+                # shellcheck source=projects/sensei.sh
+                source "$SCORTAIX_SOURCE_DIR/projects/sensei.sh"
+                "sensei_${CMD}" "$BRANCH"
+                ;;
+            (quality-center)
+                # shellcheck source=projects/quality-center.sh
+                source "$SCORTAIX_SOURCE_DIR/projects/quality-center.sh"
+                "qc_${CMD}" "$BRANCH"
+                ;;
+        esac
+        ;;
+    (uninstall)
+        uninstall
+        ;;
+    (help|--help|-h)
+        usage
+        ;;
+    (*)
+        error "Unknown command '$CMD'. Run 'scortaix help' for usage."
+        ;;
+esac

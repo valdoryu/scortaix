@@ -1,0 +1,97 @@
+# scortaix
+
+CLI for managing parallel git worktrees across Scortex projects. Lets multiple Claude Code instances (or developers) work on different features simultaneously without port collisions or shared Docker containers.
+
+## Install
+
+```bash
+cd ~/Projects/scortaix
+bash install.sh
+```
+
+The installer will:
+1. Copy the `scortaix` binary to `~/.local/bin/scortaix`
+2. Ask which shell you use (fish or zsh)
+3. Install a shell wrapper function that handles `cd` after `scortaix tree`
+
+Reload your shell after installing.
+
+## Commands
+
+### `scortaix tree <project> <branch>`
+
+Creates a new worktree for the given branch and jumps into it. If a worktree for that branch already exists, jumps into it directly.
+
+```bash
+scortaix tree sensei my-feature
+scortaix tree qc fix/login-bug
+```
+
+What it does:
+- Creates the worktree at `~/Projects/<project>-<branch>/`
+- Writes a `.envrc` with isolated ports (offset by instance number)
+- Runs `uv sync`, `pnpm install`, `pre-commit install`, `git config`
+- Runs `direnv allow`
+- `cd`s into the new worktree
+
+### `scortaix clean <project> <branch>`
+
+Removes a worktree and cleans up everything associated with it. Asks for confirmation first.
+
+```bash
+scortaix clean sensei my-feature
+scortaix clean qc fix/login-bug
+```
+
+What it does:
+- Stops and removes Docker containers for that instance
+- Removes the worktree directory
+- Deletes the local git branch
+
+## Project aliases
+
+| Alias | Project |
+|---|---|
+| `sensei`, `scortex` | `~/Projects/sensei` |
+| `quality-center`, `qc` | `~/Projects/quality-center` |
+
+## Port isolation
+
+Each worktree gets a unique instance number (auto-detected from existing worktrees). All ports are offset by `(instance - 1) * 100`.
+
+**sensei** — instance 2 example:
+
+| Service | Default | Instance 2 |
+|---|---|---|
+| Flask | 5000 | 5100 |
+| WebSocket | 12321 | 12421 |
+| Camera WS | 4000 | 4100 |
+| Vite dev | 3000 | 3100 |
+| PostgreSQL | 5432 | 5532 |
+| Redis | 6379 | 6479 |
+| Adminer | 8080 | 8180 |
+
+**quality-center** — instance 2 example:
+
+| Service | Default | Instance 2 |
+|---|---|---|
+| Django | 8000 | 8100 |
+| Vite dev | 5173 | 5273 |
+| PostgreSQL | 55432 | 55532 |
+
+## How `cd` works
+
+Bash scripts run in a subshell and cannot change the parent shell's directory. The workaround: the `scortaix` binary writes the target path to `/tmp/scortaix-last-dir` at the end of `tree`, and the shell wrapper function (installed by `install.sh`) reads it and calls `cd` in the current shell.
+
+## File structure
+
+```
+scortaix/
+  scortaix              # Main dispatcher — parses command + project, sources the right file
+  install.sh            # Installs binary + shell wrapper
+  projects/
+    sensei.sh           # sensei tree/clean logic
+    quality-center.sh   # quality-center tree/clean logic
+  README.md
+  CLAUDE.md
+```
