@@ -10,6 +10,8 @@
 _worktree_create() {
     local repo_dir="$1" worktree_dir="$2" branch="$3"
 
+    git -C "$repo_dir" worktree prune
+
     local porcelain
     porcelain=$(git -C "$repo_dir" worktree list --porcelain)
 

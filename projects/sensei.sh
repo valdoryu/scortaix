@@ -23,6 +23,7 @@ sensei_tree() {
 source .venv/bin/activate
 unset PS1
 
+export COMPOSE_PROJECT_NAME=sensei-$instance
 export REDIS_CONTAINER_NAME=redis-$instance
 export POSTGRES_CONTAINER_NAME=postgres-$instance
 export ADMINER_CONTAINER_NAME=adminer-$instance
@@ -33,7 +34,7 @@ export ADMINER_PORT=$(( 8080 + offset ))
 
 export BIND_PORT=$(( 5000 + offset ))
 export WEBSOCKET_PORT=$(( 12321 + offset ))
-export CAMERA_WEBSOCKET_PORT=$(( 4000 + offset ))
+export CAMERA_WEBSOCKET_PORT=$(( 4000 + offset * 4 ))
 export DEV_FRONTEND_PORT=$(( 3000 + offset ))
 
 export DATABASE_PORT=$(( 5432 + offset ))
@@ -58,6 +59,7 @@ EOF
     echo ""
     printf "  %-22s http://localhost:%d\n"  "Flask:"      $(( 5000  + offset ))
     printf "  %-22s ws://localhost:%d\n"    "WebSocket:"  $(( 12321 + offset ))
+    printf "  %-22s ws://localhost:%d-%d\n" "Cam WS:"     $(( 4000 + offset * 4 )) $(( 4003 + offset * 4 ))
     printf "  %-22s http://localhost:%d\n"  "Vite dev:"   $(( 3000  + offset ))
     printf "  %-22s localhost:%d\n"         "PostgreSQL:" $(( 5432  + offset ))
     printf "  %-22s localhost:%d\n"         "Redis:"      $(( 6379  + offset ))
