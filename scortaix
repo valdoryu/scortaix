@@ -4,7 +4,7 @@
 # Usage:
 #   scortaix tree      <project> <branch>   Create or jump to a worktree
 #   scortaix clean     <project> <branch>   Remove a worktree and its containers
-#   scortaix uninstall                      Remove the binary and shell wrappers
+#   scortaix uninstall                      Remove the binary, shell wrappers, and completions
 #
 # Projects: sensei (alias: scortex) | quality-center (alias: qc)
 
@@ -46,17 +46,26 @@ resolve_project() {
 uninstall() {
     local binary="$HOME/.local/bin/scortaix"
     local fish_wrapper="$HOME/.config/fish/functions/scortaix.fish"
+    local fish_completions="$HOME/.config/fish/completions/scortaix.fish"
+    local zsh_completions="$HOME/.local/share/zsh/site-functions/_scortaix"
+    local bash_completions="${XDG_DATA_HOME:-$HOME/.local/share}/bash-completion/completions/scortaix"
     local zshrc="$HOME/.zshrc"
+    local bashrc="$HOME/.bashrc"
     local config="${XDG_CONFIG_HOME:-$HOME/.config}/scortaix/config"
     local found=0
 
     echo -e "${WARN}This will remove:${NC}"
 
-    [[ -f "$binary" ]]       && { echo "  • Binary: $binary";               found=1; }
-    [[ -f "$fish_wrapper" ]] && { echo "  • Fish wrapper: $fish_wrapper";   found=1; }
-    grep -q "# scortaix shell wrapper" "$zshrc" 2>/dev/null \
-                             && { echo "  • Zsh wrapper block in $zshrc";   found=1; }
-    [[ -f "$config" ]]       && { echo "  • Config: $config";               found=1; }
+    [[ -f "$binary" ]]           && { echo "  - Binary: $binary";                     found=1; }
+    [[ -f "$fish_wrapper" ]]     && { echo "  - Fish wrapper: $fish_wrapper";          found=1; }
+    [[ -f "$fish_completions" ]] && { echo "  - Fish completions: $fish_completions"; found=1; }
+    [[ -f "$zsh_completions" ]]  && { echo "  - Zsh completions: $zsh_completions";   found=1; }
+    [[ -f "$bash_completions" ]] && { echo "  - Bash completions: $bash_completions"; found=1; }
+    grep -qE "# scortaix shell wrapper|# >>> scortaix >>>" "$zshrc" 2>/dev/null \
+                                 && { echo "  - Zsh block in $zshrc";                 found=1; }
+    grep -q "# >>> scortaix >>>" "$bashrc" 2>/dev/null \
+                                 && { echo "  - Bash block in $bashrc";               found=1; }
+    [[ -f "$config" ]]           && { echo "  - Config: $config";                     found=1; }
 
     if [[ "$found" -eq 0 ]]; then
         echo "  Nothing to remove — scortaix does not appear to be installed."
@@ -73,10 +82,37 @@ uninstall() {
         success "Removed fish wrapper"
     fi
 
-    if grep -q "# scortaix shell wrapper" "$zshrc" 2>/dev/null; then
-        sed '/^# scortaix shell wrapper/,/^}$/d' "$zshrc" > /tmp/scortaix_zshrc_clean \
+    if [[ -f "$fish_completions" ]]; then
+        rm "$fish_completions"
+        success "Removed fish completions"
+    fi
+
+    if [[ -f "$zsh_completions" ]]; then
+        rm "$zsh_completions"
+        rmdir "$(dirname "$zsh_completions")" 2>/dev/null || true
+        success "Removed zsh completions"
+    fi
+
+    if [[ -f "$bash_completions" ]]; then
+        rm "$bash_completions"
+        rmdir "$(dirname "$bash_completions")" 2>/dev/null || true
+        success "Removed bash completions"
+    fi
+
+    # Supports both old (# scortaix shell wrapper) and new (# >>> scortaix >>>) zsh markers
+    if grep -qE "# scortaix shell wrapper|# >>> scortaix >>>" "$zshrc" 2>/dev/null; then
+        sed -e '/^# scortaix shell wrapper/,/^}$/d' \
+            -e '/^# >>> scortaix >>>/,/^# <<< scortaix <<</d' \
+            "$zshrc" > /tmp/scortaix_zshrc_clean \
             && mv /tmp/scortaix_zshrc_clean "$zshrc"
-        success "Removed zsh wrapper from $zshrc"
+        success "Removed zsh block from $zshrc"
+    fi
+
+    if grep -q "# >>> scortaix >>>" "$bashrc" 2>/dev/null; then
+        sed '/^# >>> scortaix >>>/,/^# <<< scortaix <<</d' \
+            "$bashrc" > /tmp/scortaix_bashrc_clean \
+            && mv /tmp/scortaix_bashrc_clean "$bashrc"
+        success "Removed bash block from $bashrc"
     fi
 
     if [[ -f "$config" ]]; then

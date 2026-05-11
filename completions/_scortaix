@@ -1,0 +1,58 @@
+#compdef scortaix
+
+_scortaix_branches() {
+    local project="$1"
+    local config="${XDG_CONFIG_HOME:-$HOME/.config}/scortaix/config"
+    [[ -f "$config" ]] || return
+    local SCORTAIX_PROJECTS_DIR SCORTAIX_SOURCE_DIR
+    # shellcheck disable=SC1090
+    source "$config"
+    local repo_dir="${SCORTAIX_PROJECTS_DIR}/${project}"
+    [[ -d "$repo_dir" ]] || return
+    local branches
+    branches=(${(f)"$(git -C "$repo_dir" branch --format='%(refname:short)' 2>/dev/null)"})
+    _describe 'branch' branches
+}
+
+_scortaix() {
+    local state
+
+    _arguments \
+        '1: :->cmd' \
+        '2: :->project' \
+        '3: :->branch' && return
+
+    case $state in
+        cmd)
+            local commands=(
+                'tree:Create or jump to a worktree'
+                'clean:Remove a worktree and its containers'
+                'uninstall:Remove binary and shell wrappers'
+                'help:Show usage'
+            )
+            _describe 'command' commands
+            ;;
+        project)
+            [[ $words[2] == (tree|clean) ]] || return
+            local projects=(
+                'sensei:Sensei / Spark app'
+                'scortex:Sensei (alias)'
+                'quality-center:Quality Center'
+                'qc:Quality Center (alias)'
+            )
+            _describe 'project' projects
+            ;;
+        branch)
+            [[ $words[2] == (tree|clean) ]] || return
+            local project
+            case $words[3] in
+                sensei|scortex)     project=sensei ;;
+                quality-center|qc)  project=quality-center ;;
+                *)                  return ;;
+            esac
+            _scortaix_branches "$project"
+            ;;
+    esac
+}
+
+_scortaix "$@"

@@ -37,7 +37,6 @@ export WEBSOCKET_PORT=$(( 12321 + offset ))
 export CAMERA_WEBSOCKET_PORT=$(( 4000 + offset * 4 ))
 export DEV_FRONTEND_PORT=$(( 3000 + offset ))
 
-export DATABASE_PORT=$(( 5432 + offset ))
 EOF
 
     step "Python dependencies (uv sync --inexact --extra ml)"
@@ -66,6 +65,7 @@ EOF
     printf "  %-22s http://localhost:%d\n"  "Vite dev:"   $(( 3000  + offset ))
     printf "  %-22s localhost:%d\n"         "PostgreSQL:" $(( 5432  + offset ))
     printf "  %-22s localhost:%d\n"         "Redis:"      $(( 6379  + offset ))
+    printf "  %-22s http://localhost:%d\n"  "Adminer:"    $(( 8080  + offset ))
     echo ""
     echo "  Next: cd spark && docker-compose up -d && make dev-frontend"
 
