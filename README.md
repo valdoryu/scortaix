@@ -63,21 +63,21 @@ Each worktree gets a unique instance number (auto-detected from existing worktre
 
 | Service | Default | Instance 2 |
 |---|---|---|
-| Flask | 5000 | 5100 |
-| WebSocket | 12321 | 12421 |
-| Camera WS | 4000 | 4100 |
-| Vite dev | 3000 | 3100 |
-| PostgreSQL | 5432 | 5532 |
-| Redis | 6379 | 6479 |
-| Adminer | 8080 | 8180 |
+| Flask | 5000 | 5001 |
+| WebSocket | 12321 | 12322 |
+| Camera WS | 4000 | 4001 |
+| Vite dev | 3000 | 3001 |
+| PostgreSQL | 5432 | 5433 |
+| Redis | 6379 | 6380 |
+| Adminer | 8080 | 8081 |
 
 **quality-center** — instance 2 example:
 
 | Service | Default | Instance 2 |
 |---|---|---|
-| Django | 8000 | 8100 |
-| Vite dev | 5173 | 5273 |
-| PostgreSQL | 55432 | 55532 |
+| Django | 8000 | 8001 |
+| Vite dev | 5173 | 5174 |
+| PostgreSQL | 55432 | 55433 |
 
 ## How `cd` works
 
