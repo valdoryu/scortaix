@@ -57,7 +57,7 @@ What it does:
 
 ## Port isolation
 
-Each worktree gets a unique instance number (auto-detected from existing worktrees). All ports are offset by `(instance - 1) * 100`.
+Each worktree gets a unique instance number (auto-detected from existing worktrees). All ports are offset by 1.
 
 **sensei** — instance 2 example:
 
