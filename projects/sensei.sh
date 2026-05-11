@@ -46,6 +46,9 @@ EOF
     step "JS dependencies (pnpm install)"
     (cd "$worktree_dir" && pnpm install)
 
+    step "ML perf images"
+    (cd "$worktree_dir" && uv run spark/backend/emulated_images/download_ml_perf_images.py)
+
     step "Pre-commit hooks"
     (cd "$worktree_dir" && uv run pre-commit install --allow-missing-config)
 
